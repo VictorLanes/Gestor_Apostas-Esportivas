@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BetTrack — Gestão de Apostas</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #080a0f;
+  --bg2: #0e1118;
+  --surface: #13171f;
+  --surface2: #1a1f2b;
+  --surface3: #21273a;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.11);
+  --text: #e8ecf4;
+  --text2: #9aa3b8;
+  --muted: #5a6278;
+  --green: #10d98f;
+  --green-dim: rgba(16,217,143,0.1);
+  --red: #ff4d6d;
+  --red-dim: rgba(255,77,109,0.1);
+  --amber: #ffb830;
+  --amber-dim: rgba(255,184,48,0.1);
+  --blue: #4da6ff;
+  --blue-dim: rgba(77,166,255,0.1);
+  --purple: #b06fff;
+  --purple-dim: rgba(176,111,255,0.1);
+  --cyan: #00e5cc;
+  --accent: #4da6ff;
+  --font: 'Space Grotesk', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --sidebar-w: 220px;
+  --header-h: 60px;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ===== LAYOUT ===== */
+.layout { display: flex; min-height: 100vh; }
+
+/* SIDEBAR */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 200;
+  transition: transform 0.3s ease;
+}
+.sidebar-logo {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-mark {
+  width: 34px; height: 34px; border-radius: 8px;
+  background: linear-gradient(135deg, #4da6ff, #b06fff);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.logo-name { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+.logo-name span { color: var(--accent); }
+.sidebar-nav { flex: 1; padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: var(--radius);
+  color: var(--text2); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s; border: none;
+  background: none; width: 100%; text-align: left;
+}
+.nav-item:hover { color: var(--text); background: var(--surface2); }
+.nav-item.active { color: var(--accent); background: var(--blue-dim); }
+.nav-item .icon { font-size: 16px; flex-shrink: 0; }
+.nav-section { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; padding: 12px 12px 6px; }
+.sidebar-footer { padding: 16px; border-top: 1px solid var(--border); }
+.banca-mini { background: var(--surface2); border-radius: var(--radius); padding: 12px; }
+.banca-mini-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+.banca-mini-val { font-size: 18px; font-weight: 700; font-family: var(--mono); margin-top: 2px; }
+
+/* MAIN */
+.main-wrap {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* TOPBAR */
+.topbar {
+  height: var(--header-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+  position: sticky; top: 0; z-index: 100;
+}
+.topbar-title { font-size: 16px; font-weight: 700; }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.menu-toggle {
+  display: none; background: none; border: none;
+  color: var(--text); cursor: pointer; font-size: 20px; padding: 4px;
+}
+
+/* CONTENT */
+.content { padding: 24px; flex: 1; }
+
+/* PAGES */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ===== COMPONENTS ===== */
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.card-title { font-size: 14px; font-weight: 600; }
+.card-body { padding: 20px; }
+
+/* Metrics grid */
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.metric {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  position: relative; overflow: hidden;
+}
+.metric::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.metric.green::before { background: var(--green); }
+.metric.red::before { background: var(--red); }
+.metric.amber::before { background: var(--amber); }
+.metric.blue::before { background: var(--blue); }
+.metric.purple::before { background: var(--purple); }
+.metric-icon { font-size: 20px; margin-bottom: 10px; }
+.metric-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+.metric-value { font-size: 24px; font-weight: 700; font-family: var(--mono); letter-spacing: -0.5px; margin: 4px 0; }
+.metric-sub { font-size: 11px; color: var(--text2); }
+.c-green { color: var(--green); }
+.c-red { color: var(--red); }
+.c-amber { color: var(--amber); }
+.c-blue { color: var(--blue); }
+.c-purple { color: var(--purple); }
+.c-text { color: var(--text); }
+
+/* Grid layouts */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-dash { display: grid; grid-template-columns: 1fr 360px; gap: 16px; }
+.gap-16 { gap: 16px; }
+
+/* Flex utils */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.gap-12 { gap: 12px; }
+.gap-8 { gap: 8px; }
+
+/* Forms */
+.form-row { display: grid; gap: 12px; }
+.form-row-2 { grid-template-columns: 1fr 1fr; }
+.form-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+.form-row-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-full { grid-column: 1 / -1; }
+.label {
+  font-size: 11px; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.7px; font-weight: 500;
+}
+.input, .select, .textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-family: var(--font);
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -webkit-appearance: none;
+}
+.input:focus, .select:focus, .textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(77,166,255,0.1);
+}
+.select option { background: var(--surface2); }
+.textarea { resize: vertical; min-height: 70px; }
+
+/* Buttons */
+.btn {
+  border: none; cursor: pointer;
+  border-radius: 8px;
+  font-family: var(--font);
+  font-weight: 600; font-size: 13px;
+  padding: 9px 16px;
+  transition: all 0.15s;
+  display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #050709; }
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(16,217,143,0.2); }
+.btn-green:hover { background: var(--green); color: #050709; }
+.btn-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,77,109,0.2); }
+.btn-red:hover { background: var(--red); color: white; }
+.btn-amber { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(255,184,48,0.2); }
+.btn-amber:hover { background: var(--amber); color: #050709; }
+.btn-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(176,111,255,0.2); }
+.btn-purple:hover { background: var(--purple); color: white; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-icon { padding: 7px; border-radius: 7px; }
+.btn-full { width: 100%; justify-content: center; }
+
+/* Badges */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 3px 9px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+}
+.badge-green { background: var(--green-dim); color: var(--green); }
+.badge-red { background: var(--red-dim); color: var(--red); }
+.badge-amber { background: var(--amber-dim); color: var(--amber); }
+.badge-blue { background: var(--blue-dim); color: var(--blue); }
+.badge-purple { background: var(--purple-dim); color: var(--purple); }
+.badge-gray { background: var(--surface3); color: var(--text2); }
+
+/* Table */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  text-align: left; padding: 10px 14px;
+  font-size: 11px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.8px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 500; white-space: nowrap;
+}
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+.mono { font-family: var(--mono); }
+
+/* Stat bar */
+.stat-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.stat-box { background: var(--surface2); border-radius: 8px; padding: 12px; }
+.stat-box-label { font-size: 11px; color: var(--muted); }
+.stat-box-val { font-size: 15px; font-weight: 700; font-family: var(--mono); margin-top: 2px; }
+
+/* Progress bar */
+.progress-wrap { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin: 8px 0; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+
+/* Chart */
+.chart-wrap { position: relative; width: 100%; }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; }
+.tab {
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; padding: 5px 12px; border-radius: 6px;
+  font-family: var(--font); font-size: 12px; font-weight: 500;
+  transition: all 0.15s;
+}
+.tab.active { color: var(--text); background: var(--surface2); }
+
+/* Filters */
+.filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* Divider */
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+/* Empty */
+.empty { text-align: center; padding: 48px 24px; color: var(--muted); }
+.empty-icon { font-size: 36px; margin-bottom: 10px; }
+.empty-title { font-size: 15px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(5,7,9,0.85);
+  z-index: 500; display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  width: 100%; max-width: 560px;
+  max-height: 90vh; overflow-y: auto;
+  transform: translateY(16px); transition: transform 0.2s;
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-title { font-size: 15px; font-weight: 700; }
+.modal-close {
+  background: var(--surface2); border: none; color: var(--text2);
+  width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+  font-size: 14px; display: flex; align-items: center; justify-content: center;
+}
+.modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.modal-footer { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+
+/* Setup */
+.setup-overlay {
+  position: fixed; inset: 0; background: var(--bg);
+  z-index: 1000; display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.setup-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 20px; padding: 40px;
+  width: 100%; max-width: 440px; text-align: center;
+}
+.setup-logo { font-size: 48px; margin-bottom: 16px; }
+.setup-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+.setup-sub { font-size: 13px; color: var(--text2); margin-bottom: 28px; line-height: 1.6; }
+.setup-form { text-align: left; display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 2000;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 12px 18px; font-size: 13px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  transform: translateY(16px); opacity: 0; transition: all 0.25s;
+  pointer-events: none; max-width: 300px;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+
+/* Overlay drawer for mobile */
+.sidebar-backdrop {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6); z-index: 199;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1100px) {
+  .metrics { grid-template-columns: repeat(2, 1fr); }
+  .grid-dash { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-backdrop.show { display: block; }
+  .main-wrap { margin-left: 0; }
+  .menu-toggle { display: flex; }
+  .form-row-4 { grid-template-columns: 1fr 1fr; }
+  .form-row-3 { grid-template-columns: 1fr 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 600px) {
+  .content { padding: 16px; }
+  .metrics { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .metric { padding: 14px; }
+  .metric-value { font-size: 18px; }
+  .form-row-2 { grid-template-columns: 1fr; }
+  .form-row-3 { grid-template-columns: 1fr; }
+  .form-row-4 { grid-template-columns: 1fr 1fr; }
+  .card-body { padding: 14px; }
+  .topbar { padding: 0 16px; }
+  .grid-3 { grid-template-columns: 1fr; }
+  .filters { gap: 6px; }
+  .filters .select { font-size: 12px; padding: 7px 10px; }
+  .btn-sm { font-size: 11px; padding: 5px 10px; }
+  th, td { padding: 8px 10px; font-size: 12px; }
+  .modal { max-width: 100%; }
+  .setup-card { padding: 28px 20px; }
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">⚡</div>
+    <div class="logo-name">Bet<span>Track</span></div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Principal</div>
+    <button class="nav-item active" onclick="showPage('dashboard',this)">
+      <span class="icon">📊</span> Dashboard
+    </button>
+    <button class="nav-item" onclick="showPage('apostas',this)">
+      <span class="icon">🎯</span> Apostas
+    </button>
+    <button class="nav-item" onclick="showPage('registrar',this)">
+      <span class="icon">➕</span> Nova Aposta
+    </button>
+    <div class="nav-section">Análise</div>
+    <button class="nav-item" onclick="showPage('banca',this)">
+      <span class="icon">💰</span> Banca
+    </button>
+    <button class="nav-item" onclick="showPage('relatorios',this)">
+      <span class="icon">📈</span> Relatórios
+    </button>
+    <div class="nav-section">Exportar</div>
+    <button class="nav-item" onclick="exportExcel()">
+      <span class="icon">📥</span> Exportar Excel
+    </button>
+    <button class="nav-item btn-danger-nav" onclick="confirmReset()" style="color:var(--red);margin-top:auto;">
+      <span class="icon">🗑</span> Zerar dados
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="banca-mini">
+      <div class="banca-mini-label">Banca atual</div>
+      <div class="banca-mini-val" id="sidebar-banca">R$ 0,00</div>
+    </div>
+  </div>
+</aside>
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+<!-- MAIN -->
+<div class="main-wrap">
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost btn-sm" onclick="exportExcel()">📥 Excel</button>
+      <button class="btn btn-primary btn-sm" onclick="showPage('registrar',null)">+ Nova Aposta</button>
+    </div>
+  </header>
+
+  <main class="content">
+
+    <!-- ===== DASHBOARD ===== -->
+    <div class="page active" id="page-dashboard">
+      <div class="metrics" id="metrics-grid"></div>
+      <div class="grid-dash" style="display:grid;gap:16px;">
+        <div class="flex flex-col gap-16">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Evolução da Banca</span>
+              <div class="tabs">
+                <button class="tab active" onclick="switchChart('banca',this)">Banca</button>
+                <button class="tab" onclick="switchChart('lucro',this)">L/P</button>
+                <button class="tab" onclick="switchChart('esporte',this)">Esportes</button>
+                <button class="tab" onclick="switchChart('mercado',this)">Mercados</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="chart-wrap" style="height:220px;"><canvas id="mainChart"></canvas></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Últimas Apostas</span>
+              <button class="btn btn-ghost btn-sm" onclick="showPage('apostas',null)">Ver todas →</button>
+            </div>
+            <div class="card-body" style="padding:0;">
+              <div id="dash-recent"></div>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-12" style="gap:16px;">
+          <div class="card">
+            <div class="card-header"><span class="card-title">💰 Banca</span></div>
+            <div class="card-body" id="banca-widget"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">📊 Desempenho</span></div>
+            <div class="card-body" id="perf-widget"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== APOSTAS ===== -->
+    <div class="page" id="page-apostas">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Todas as Apostas</span>
+          <div class="filters">
+            <select class="select" id="f-status" style="width:auto;" onchange="renderTable()">
+              <option value="">Todos status</option>
+              <option value="pendente">Pendente</option>
+              <option value="ganhou">Ganhou</option>
+              <option value="perdeu">Perdeu</option>
+              <option value="cashout">Cash Out</option>
+              <option value="void">Void/Anulada</option>
+            </select>
+            <select class="select" id="f-sport" style="width:auto;" onchange="renderTable()">
+              <option value="">Todos esportes</option>
+              <option value="futebol">Futebol</option>
+              <option value="basquete">Basquete</option>
+              <option value="tenis">Tênis</option>
+              <option value="mma">MMA</option>
+              <option value="volei">Vôlei</option>
+              <option value="formula1">Fórmula 1</option>
+              <option value="nfl">NFL</option>
+              <option value="outro">Outro</option>
+            </select>
+            <select class="select" id="f-tipo" style="width:auto;" onchange="renderTable()">
+              <option value="">Todos os tipos</option>
+              <option value="simples">Simples</option>
+              <option value="multipla">Múltipla</option>
+              <option value="ao-vivo">Ao vivo</option>
+            </select>
+            <input class="input" id="f-busca" style="width:180px;" placeholder="🔍 Buscar..." oninput="renderTable()" />
+          </div>
+        </div>
+        <div class="table-wrap" id="table-wrap">
+          <div id="bets-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== NOVA APOSTA ===== -->
+    <div class="page" id="page-registrar">
+      <div style="max-width:760px;">
+        <div class="card">
+          <div class="card-header"><span class="card-title">➕ Registrar Nova Aposta</span></div>
+          <div class="card-body">
+            <div class="form-row form-row-2" style="margin-bottom:12px;">
+              <div class="form-group">
+                <label class="label">Esporte</label>
+                <select class="select" id="n-sport">
+                  <option value="futebol">⚽ Futebol</option>
+                  <option value="basquete">🏀 Basquete</option>
+                  <option value="tenis">🎾 Tênis</option>
+                  <option value="mma">🥊 MMA</option>
+                  <option value="volei">🏐 Vôlei</option>
+                  <option value="formula1">🏎️ Fórmula 1</option>
+                  <option value="nfl">🏈 NFL</option>
+                  <option value="outro">🎲 Outro</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="label">Tipo de Aposta</label>
+                <select class="select" id="n-tipo">
+                  <option value="simples">Simples</option>
+                  <option value="multipla">Múltipla</option>
+                  <option value="ao-vivo">Ao Vivo</option>
+                  <option value="antecipada">Antecipada</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row form-row-1" style="margin-bottom:12px;">
+              <div class="form-group form-full">
+                <label class="label">Partida / Evento</label>
+                <input class="input" id="n-match" placeholder="Ex: Flamengo x Palmeiras" />
+              </div>
+            </div>
+            <div class="form-row form-row-2" style="margin-bottom:12px;">
+              <div class="form-group">
+                <label class="label">Mercado</label>
+                <select class="select" id="n-market">
+                  <option>Resultado Final (1X2)</option>
+                  <option>Over/Under Gols</option>
+                  <option>Handicap Asiático</option>
+                  <option>Handicap Europeu</option>
+                  <option>BTTS (Ambas marcam)</option>
+                  <option>Gols marcados</option>
+                  <option>Escanteios</option>
+                  <option>Cartões</option>
+                  <option>Primeiro a marcar</option>
+                  <option>Resultado intervalo</option>
+                  <option>Total pontos</option>
+                  <option>Pontuação exata</option>
+                  <option>Outro</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="label">Palpite / Seleção</label>
+                <input class="input" id="n-pick" placeholder="Ex: Flamengo, Over 2.5..." />
+              </div>
+            </div>
+            <div class="form-row form-row-4" style="margin-bottom:12px;">
+              <div class="form-group">
+                <label class="label">Odd</label>
+                <input class="input" id="n-odd" type="number" step="0.01" min="1.01" placeholder="1.90" />
+              </div>
+              <div class="form-group">
+                <label class="label">Valor apostado (R$)</label>
+                <input class="input" id="n-amount" type="number" min="0.01" step="0.01" placeholder="50.00" oninput="calcRetorno()" />
+              </div>
+              <div class="form-group">
+                <label class="label">Retorno potencial</label>
+                <input class="input" id="n-retorno" placeholder="—" readonly style="color:var(--green);font-family:var(--mono);" />
+              </div>
+              <div class="form-group">
+                <label class="label">Lucro potencial</label>
+                <input class="input" id="n-lucro" placeholder="—" readonly style="color:var(--green);font-family:var(--mono);" />
+              </div>
+            </div>
+            <div class="form-row form-row-4" style="margin-bottom:12px;">
+              <div class="form-group">
+                <label class="label">Data</label>
+                <input class="input" id="n-date" type="date" />
+              </div>
+              <div class="form-group">
+                <label class="label">Hora (opcional)</label>
+                <input class="input" id="n-time" type="time" placeholder="15:00" />
+              </div>
+              <div class="form-group">
+                <label class="label">Casa de Apostas</label>
+                <select class="select" id="n-house">
+                  <option value="Bet365">Bet365</option>
+                  <option value="Betano">Betano</option>
+                  <option value="Superbet">Superbet</option>
+                  <option value="KTO">KTO</option>
+                  <option value="Sportingbet">Sportingbet</option>
+                  <option value="Betfair">Betfair</option>
+                  <option value="1xBet">1xBet</option>
+                  <option value="Pinnacle">Pinnacle</option>
+                  <option value="Outra">Outra</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="label">Status inicial</label>
+                <select class="select" id="n-status">
+                  <option value="pendente">🕐 Pendente</option>
+                  <option value="ganhou">✅ Ganhou</option>
+                  <option value="perdeu">❌ Perdeu</option>
+                  <option value="cashout">💵 Cash Out</option>
+                  <option value="void">🚫 Void/Anulada</option>
+                </select>
+              </div>
+            </div>
+            <!-- Campos condicionais -->
+            <div id="cashout-fields" style="display:none;" class="form-row form-row-2" style="margin-bottom:12px;">
+              <div class="form-group" style="margin-bottom:12px;">
+                <label class="label">Valor do Cash Out (R$)</label>
+                <input class="input" id="n-cashout" type="number" step="0.01" min="0" placeholder="Ex: 35.00" />
+              </div>
+            </div>
+            <div class="form-row form-row-2" style="margin-bottom:12px;">
+              <div class="form-group">
+                <label class="label">Campeonato / Liga</label>
+                <input class="input" id="n-liga" placeholder="Ex: Brasileirão Série A" />
+              </div>
+              <div class="form-group">
+                <label class="label">Tipster / Fonte (opcional)</label>
+                <input class="input" id="n-tipster" placeholder="Ex: Própria análise" />
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom:16px;">
+              <label class="label">Observações</label>
+              <textarea class="textarea" id="n-obs" placeholder="Anotações sobre a aposta..."></textarea>
+            </div>
+            <div style="display:flex;gap:10px;">
+              <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="addBet()">✓ Registrar Aposta</button>
+              <button class="btn btn-ghost" onclick="clearForm()">Limpar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== BANCA ===== -->
+    <div class="page" id="page-banca">
+      <div class="grid-2" style="margin-bottom:16px;">
+        <div class="card">
+          <div class="card-header"><span class="card-title">⚙️ Configurações de Banca</span></div>
+          <div class="card-body">
+            <div class="form-row form-row-2" style="margin-bottom:12px;">
+              <div class="form-group">
+                <label class="label">Banca Inicial (R$)</label>
+                <input class="input" id="cfg-banca" type="number" placeholder="1000" />
+              </div>
+              <div class="form-group">
+                <label class="label">Stake Padrão (%)</label>
+                <input class="input" id="cfg-stake" type="number" placeholder="5" min="1" max="100" />
+              </div>
+              <div class="form-group">
+                <label class="label">Limite perda diária (R$)</label>
+                <input class="input" id="cfg-limite-dia" type="number" placeholder="100" />
+              </div>
+              <div class="form-group">
+                <label class="label">Limite perda mensal (R$)</label>
+                <input class="input" id="cfg-limite-mes" type="number" placeholder="500" />
+              </div>
+              <div class="form-group">
+                <label class="label">Stop Win (R$)</label>
+                <input class="input" id="cfg-stopwin" type="number" placeholder="300" />
+              </div>
+              <div class="form-group">
+                <label class="label">Stop Loss (R$)</label>
+                <input class="input" id="cfg-stoploss" type="number" placeholder="200" />
+              </div>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="saveBanca()">Salvar Configurações</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">📊 Resumo da Banca</span></div>
+          <div class="card-body" id="banca-resumo"></div>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-bottom:16px;">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Evolução da Banca</span></div>
+          <div class="card-body"><div class="chart-wrap" style="height:240px;"><canvas id="bancaChart"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Lucro por Esporte</span></div>
+          <div class="card-body"><div class="chart-wrap" style="height:240px;"><canvas id="sportChart"></canvas></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">🧮 Calculadora Kelly</span></div>
+        <div class="card-body">
+          <div class="form-row form-row-4" style="margin-bottom:12px;">
+            <div class="form-group">
+              <label class="label">Odd oferecida</label>
+              <input class="input" id="k-odd" type="number" step="0.01" placeholder="2.00" oninput="calcKelly()" />
+            </div>
+            <div class="form-group">
+              <label class="label">Prob. de vitória (%)</label>
+              <input class="input" id="k-prob" type="number" step="0.1" placeholder="55" oninput="calcKelly()" />
+            </div>
+            <div class="form-group">
+              <label class="label">Fração Kelly</label>
+              <select class="select" id="k-frac" onchange="calcKelly()">
+                <option value="1">Kelly Total</option>
+                <option value="0.5" selected>Meio Kelly</option>
+                <option value="0.25">Quarto Kelly</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="label">Stake sugerido (R$)</label>
+              <input class="input" id="k-result" readonly placeholder="—" style="color:var(--green);font-family:var(--mono);" />
+            </div>
+          </div>
+          <div id="kelly-info" style="font-size:12px;color:var(--text2);"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== RELATÓRIOS ===== -->
+    <div class="page" id="page-relatorios">
+      <div class="metrics" id="relat-metrics" style="margin-bottom:16px;"></div>
+      <div class="grid-2" style="margin-bottom:16px;">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Performance por Casa</span></div>
+          <div class="card-body"><div class="chart-wrap" style="height:240px;"><canvas id="houseChart"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Distribuição de Odds</span></div>
+          <div class="card-body"><div class="chart-wrap" style="height:240px;"><canvas id="oddChart"></canvas></div></div>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Top Mercados</span></div>
+          <div class="card-body" id="top-mercados"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Por Mês</span></div>
+          <div class="card-body"><div class="chart-wrap" style="height:200px;"><canvas id="monthChart"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Sequências</span></div>
+          <div class="card-body" id="sequencias"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+</div>
+
+<!-- MODAL RESULTADO -->
+<div class="modal-overlay" id="result-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Atualizar Resultado</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveResult()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div class="setup-overlay" id="setup-overlay">
+  <div class="setup-card">
+    <div class="setup-logo">⚡</div>
+    <div class="setup-title">Bem-vindo ao BetTrack</div>
+    <div class="setup-sub">Configure sua banca para começar a gerenciar suas apostas com precisão.</div>
+    <div class="setup-form">
+      <div class="form-group">
+        <label class="label">Banca Inicial (R$) *</label>
+        <input class="input" id="s-banca" type="number" placeholder="Ex: 1000" min="1" />
+      </div>
+      <div class="form-group">
+        <label class="label">Stake Padrão (%)</label>
+        <input class="input" id="s-stake" type="number" placeholder="5" min="1" max="50" />
+      </div>
+      <div class="form-group">
+        <label class="label">Limite de perda diária (R$)</label>
+        <input class="input" id="s-limite" type="number" placeholder="Ex: 100" />
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" style="font-size:15px;padding:14px;" onclick="setup()">Começar →</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== STATE =====
+let S = {
+  banca: { inicial: 0, stake: 5, limiteDia: 0, limiteMes: 0, stopWin: 0, stopLoss: 0 },
+  bets: [],
+  charts: {},
+  editId: null,
+  currentPage: 'dashboard'
+};
+
+const SPORT_EMOJI = { futebol:'⚽', basquete:'🏀', tenis:'🎾', mma:'🥊', volei:'🏐', formula1:'🏎️', nfl:'🏈', outro:'🎲' };
+
+// ===== UTILS =====
+const $ = id => document.getElementById(id);
+const fmt = v => 'R$ ' + Math.abs(+v || 0).toFixed(2).replace('.',',');
+const fmtSigned = v => (v >= 0 ? '+' : '−') + fmt(Math.abs(v));
+const fmtPct = v => (+v || 0).toFixed(1) + '%';
+
+function calcMetrics() {
+  const fin = S.bets.filter(b => b.status !== 'pendente' && b.status !== 'void');
+  const won = S.bets.filter(b => b.status === 'ganhou');
+  const lost = S.bets.filter(b => b.status === 'perdeu');
+  const co = S.bets.filter(b => b.status === 'cashout');
+  const totalStaked = fin.reduce((s,b) => s + +b.amount, 0);
+  const totalReturn = won.reduce((s,b) => s + b.amount * b.odd, 0) + co.reduce((s,b) => s + +(b.cashoutVal || 0), 0);
+  const profit = totalReturn - fin.reduce((s,b) => s + +b.amount, 0) + co.reduce((s,b) => s + +b.amount, 0) - totalStaked + fin.reduce((s,b) => s + +b.amount, 0);
+  // simpler:
+  const lucro = won.reduce((s,b) => s + (+b.amount * +b.odd - +b.amount), 0)
+               + co.reduce((s,b) => s + (+(b.cashoutVal||0) - +b.amount), 0)
+               - lost.reduce((s,b) => s + +b.amount, 0);
+  const totalInvested = [...won, ...lost, ...co].reduce((s,b) => s + +b.amount, 0);
+  const roi = totalInvested > 0 ? lucro / totalInvested * 100 : 0;
+  const wr = fin.length > 0 ? (won.length + co.length) / fin.length * 100 : 0;
+  const bancaAtual = +S.banca.inicial + lucro;
+  const avgOdd = fin.length > 0 ? fin.reduce((s,b) => s + +b.odd, 0) / fin.length : 0;
+  const pending = S.bets.filter(b => b.status === 'pendente').length;
+  return { won: won.length, lost: lost.length, co: co.length, pending,
+    total: S.bets.length, fin: fin.length, lucro, roi, wr, bancaAtual, totalInvested, avgOdd };
+}
+
+function bancaColor(v) {
+  if (v >= +S.banca.inicial) return 'var(--green)';
+  return 'var(--red)';
+}
+
+// ===== SIDEBAR =====
+function toggleSidebar() {
+  $('sidebar').classList.toggle('open');
+  $('sidebar-backdrop').classList.toggle('show');
+}
+function closeSidebar() {
+  $('sidebar').classList.remove('open');
+  $('sidebar-backdrop').classList.remove('show');
+}
+
+// ===== PAGES =====
+const PAGE_TITLES = { dashboard:'Dashboard', apostas:'Apostas', registrar:'Nova Aposta', banca:'Banca', relatorios:'Relatórios' };
+
+function showPage(p, btn) {
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  $('page-' + p).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  $('topbar-title').textContent = PAGE_TITLES[p] || p;
+  S.currentPage = p;
+  closeSidebar();
+  if (p === 'dashboard') renderDashboard();
+  if (p === 'apostas') renderTable();
+  if (p === 'registrar') { setToday(); calcRetorno(); }
+  if (p === 'banca') renderBancaPage();
+  if (p === 'relatorios') renderRelatorios();
+}
+
+// ===== SETUP =====
+function setup() {
+  const b = parseFloat($('s-banca').value);
+  if (!b || b <= 0) { toast('⚠️ Informe um valor de banca válido!'); return; }
+  S.banca.inicial = b;
+  S.banca.stake = parseFloat($('s-stake').value) || 5;
+  S.banca.limiteDia = parseFloat($('s-limite').value) || 0;
+  $('setup-overlay').style.display = 'none';
+  renderDashboard();
+  updateSidebarBanca();
+  toast('✅ Banca configurada! Bom jogo!');
+}
+
+function confirmReset() {
+  if (!confirm('Zerar TODOS os dados? Esta ação não pode ser desfeita.')) return;
+  Object.values(S.charts).forEach(c => { try { c.destroy(); } catch(e){} });
+  S = { banca: { inicial: 0, stake: 5, limiteDia: 0, limiteMes: 0, stopWin: 0, stopLoss: 0 }, bets: [], charts: {}, editId: null };
+  ['s-banca','s-stake','s-limite'].forEach(id => $(id).value = '');
+  $('setup-overlay').style.display = 'flex';
+  toast('🗑 Dados zerados!');
+}
+
+// ===== FORM =====
+function setToday() {
+  const el = $('n-date');
+  if (el && !el.value) el.value = new Date().toISOString().slice(0,10);
+}
+
+function calcRetorno() {
+  const odd = parseFloat($('n-odd').value) || 0;
+  const amt = parseFloat($('n-amount').value) || 0;
+  if (odd > 0 && amt > 0) {
+    const ret = amt * odd;
+    const luc = ret - amt;
+    $('n-retorno').value = fmt(ret).replace('R$ ','R$ ');
+    $('n-lucro').value = '+' + fmt(luc).replace('R$ ','R$ ');
+    $('n-retorno').style.color = 'var(--green)';
+    $('n-lucro').style.color = 'var(--green)';
+  } else {
+    $('n-retorno').value = '';
+    $('n-lucro').value = '';
+  }
+}
+
+// Show/hide cashout field
+$('n-status') && $('n-status').addEventListener('change', function() {
+  $('cashout-fields').style.display = this.value === 'cashout' ? 'grid' : 'none';
+});
+
+function clearForm() {
+  ['n-match','n-pick','n-odd','n-amount','n-retorno','n-lucro','n-liga','n-tipster','n-obs','n-cashout','n-time'].forEach(id => { if($(id)) $(id).value = ''; });
+  $('n-status').value = 'pendente';
+  $('cashout-fields').style.display = 'none';
+  setToday();
+}
+
+function addBet() {
+  const match = $('n-match').value.trim();
+  const pick = $('n-pick').value.trim();
+  const odd = parseFloat($('n-odd').value);
+  const amount = parseFloat($('n-amount').value);
+  const date = $('n-date').value;
+  if (!match) { toast('⚠️ Informe a partida/evento!'); return; }
+  if (!pick) { toast('⚠️ Informe o palpite!'); return; }
+  if (!odd || odd < 1.01) { toast('⚠️ Odd inválida (mínimo 1.01)!'); return; }
+  if (!amount || amount <= 0) { toast('⚠️ Informe o valor da aposta!'); return; }
+  if (!date) { toast('⚠️ Informe a data!'); return; }
+
+  const status = $('n-status').value;
+  const cashoutVal = status === 'cashout' ? parseFloat($('n-cashout').value) || 0 : 0;
+
+  S.bets.unshift({
+    id: Date.now(),
+    sport: $('n-sport').value,
+    tipo: $('n-tipo').value,
+    match, pick,
+    market: $('n-market').value,
+    odd, amount, status, cashoutVal,
+    date, time: $('n-time').value,
+    house: $('n-house').value,
+    liga: $('n-liga').value,
+    tipster: $('n-tipster').value,
+    obs: $('n-obs').value,
+    createdAt: Date.now()
+  });
+
+  clearForm();
+  updateSidebarBanca();
+  toast('✅ Aposta registrada!');
+  showPage('apostas', null);
+}
+
+// ===== TABLE =====
+function renderTable() {
+  const st = $('f-status')?.value || '';
+  const sp = $('f-sport')?.value || '';
+  const tp = $('f-tipo')?.value || '';
+  const q = ($('f-busca')?.value || '').toLowerCase();
+
+  let list = [...S.bets].sort((a,b) => new Date(b.date) - new Date(a.date));
+  if (st) list = list.filter(b => b.status === st);
+  if (sp) list = list.filter(b => b.sport === sp);
+  if (tp) list = list.filter(b => b.tipo === tp);
+  if (q) list = list.filter(b =>
+    b.match.toLowerCase().includes(q) || b.pick.toLowerCase().includes(q) ||
+    (b.liga||'').toLowerCase().includes(q) || (b.house||'').toLowerCase().includes(q)
+  );
+
+  const el = $('bets-table');
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Nenhuma aposta encontrada</div><div>Tente ajustar os filtros ou registre novas apostas.</div></div>';
+    return;
+  }
+
+  el.innerHTML = `<table>
+    <thead><tr>
+      <th>Data</th><th>Evento</th><th>Mercado / Palpite</th>
+      <th>Odd</th><th>Valor</th><th>Resultado</th><th>L/P</th><th>Casa</th><th>Ação</th>
+    </tr></thead>
+    <tbody>${list.map(b => {
+      const lp = calcLP(b);
+      const lpColor = lp > 0 ? 'c-green' : lp < 0 ? 'c-red' : 'c-text';
+      return `<tr>
+        <td><span style="font-size:11px;color:var(--text2);">${b.date}${b.time?' '+b.time:''}</span><br><span style="font-size:11px;color:var(--muted);">${b.liga||''}</span></td>
+        <td>
+          <span style="font-size:16px;">${SPORT_EMOJI[b.sport]||'🎲'}</span>
+          <strong style="font-size:13px;">${b.match}</strong>
+          <br><span style="font-size:11px;color:var(--text2);">${b.tipo||''} • ${b.house||''}</span>
+        </td>
+        <td>${b.market}<br><span style="color:var(--accent);font-weight:600;">${b.pick}</span></td>
+        <td class="mono">${(+b.odd).toFixed(2)}</td>
+        <td class="mono">${fmt(b.amount)}</td>
+        <td>${statusBadge(b)}</td>
+        <td class="mono ${lpColor}">${b.status==='pendente'?'—':fmtSigned(lp)}</td>
+        <td style="font-size:12px;">${b.house||'—'}</td>
+        <td>
+          <div style="display:flex;gap:4px;">
+            ${b.status==='pendente'?`<button class="btn btn-sm btn-ghost btn-icon" onclick="openResult(${b.id})" title="Atualizar resultado">✏️</button>`:''}
+            <button class="btn btn-sm btn-ghost btn-icon" onclick="deleteBet(${b.id})" title="Excluir">🗑</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function calcLP(b) {
+  if (b.status === 'ganhou') return +b.amount * +b.odd - +b.amount;
+  if (b.status === 'perdeu') return -+b.amount;
+  if (b.status === 'cashout') return +(b.cashoutVal||0) - +b.amount;
+  return 0;
+}
+
+function statusBadge(b) {
+  const map = { ganhou:'badge-green', perdeu:'badge-red', pendente:'badge-amber', cashout:'badge-purple', void:'badge-gray' };
+  const label = { ganhou:'✅ Ganhou', perdeu:'❌ Perdeu', pendente:'🕐 Pendente', cashout:'💵 Cash Out', void:'🚫 Void' };
+  return `<span class="badge ${map[b.status]||'badge-gray'}">${label[b.status]||b.status}</span>`;
+}
+
+function deleteBet(id) {
+  if (!confirm('Excluir esta aposta?')) return;
+  S.bets = S.bets.filter(b => b.id !== id);
+  renderTable();
+  updateSidebarBanca();
+  toast('🗑 Aposta removida.');
+}
+
+// ===== MODAL RESULTADO =====
+function openResult(id) {
+  S.editId = id;
+  const b = S.bets.find(x => x.id === id);
+  if (!b) return;
+  $('modal-title').textContent = 'Atualizar: ' + b.match;
+  $('modal-body').innerHTML = `
+    <div class="form-group">
+      <label class="label">Odd apostada</label>
+      <input class="input" value="${b.odd}" readonly style="color:var(--text2);" />
+    </div>
+    <div class="form-group">
+      <label class="label">Valor apostado</label>
+      <input class="input" value="${fmt(b.amount)}" readonly style="color:var(--text2);" />
+    </div>
+    <div class="form-group">
+      <label class="label">Resultado *</label>
+      <select class="select" id="m-status" onchange="toggleCashoutField()">
+        <option value="ganhou" ${b.status==='ganhou'?'selected':''}>✅ Ganhou</option>
+        <option value="perdeu" ${b.status==='perdeu'?'selected':''}>❌ Perdeu</option>
+        <option value="cashout" ${b.status==='cashout'?'selected':''}>💵 Cash Out</option>
+        <option value="void" ${b.status==='void'?'selected':''}>🚫 Void/Anulada</option>
+        <option value="pendente" ${b.status==='pendente'?'selected':''}>🕐 Pendente</option>
+      </select>
+    </div>
+    <div id="m-cashout-wrap" style="display:${b.status==='cashout'?'block':'none'};">
+      <div class="form-group">
+        <label class="label">Valor recebido no Cash Out (R$)</label>
+        <input class="input" id="m-cashout" type="number" step="0.01" min="0" value="${b.cashoutVal||''}" placeholder="Ex: 35.00" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="label">Observações</label>
+      <textarea class="textarea" id="m-obs">${b.obs||''}</textarea>
+    </div>
+  `;
+  $('result-modal').classList.add('open');
+}
+
+function toggleCashoutField() {
+  const v = $('m-status')?.value;
+  const w = $('m-cashout-wrap');
+  if (w) w.style.display = v === 'cashout' ? 'block' : 'none';
+}
+
+function closeModal() { $('result-modal').classList.remove('open'); }
+
+function saveResult() {
+  const b = S.bets.find(x => x.id === S.editId);
+  if (!b) return;
+  b.status = $('m-status').value;
+  b.cashoutVal = b.status === 'cashout' ? parseFloat($('m-cashout').value) || 0 : 0;
+  b.obs = $('m-obs').value;
+  closeModal();
+  renderTable();
+  updateSidebarBanca();
+  toast('✅ Resultado salvo!');
+}
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+  const m = calcMetrics();
+  updateSidebarBanca();
+
+  // Metrics
+  $('metrics-grid').innerHTML = [
+    { label:'Banca Atual', val: fmt(m.bancaAtual), sub: fmtSigned(m.lucro) + ' lucro total', cls: m.bancaAtual >= +S.banca.inicial ? 'green' : 'red', icon:'💰' },
+    { label:'ROI', val: fmtPct(m.roi), sub: fmt(m.totalInvested) + ' investido', cls: m.roi >= 0 ? 'green' : 'red', icon:'📈' },
+    { label:'Winrate', val: fmtPct(m.wr), sub: `${m.won}G ${m.lost}P ${m.co}CO ${m.pending} pend.`, cls: m.wr >= 55 ? 'green' : m.wr >= 45 ? 'amber' : 'red', icon:'🎯' },
+    { label:'Apostas', val: m.total, sub: `Odd média: ${m.avgOdd.toFixed(2)}`, cls: 'blue', icon:'📋' },
+  ].map(x => `<div class="metric ${x.cls}"><div class="metric-icon">${x.icon}</div><div class="metric-label">${x.label}</div><div class="metric-value c-${x.cls}">${x.val}</div><div class="metric-sub">${x.sub}</div></div>`).join('');
+
+  // Recent bets
+  const recent = [...S.bets].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
+  $('dash-recent').innerHTML = recent.length ? `<table>
+    <thead><tr><th>Evento</th><th>Palpite</th><th>Odd</th><th>Valor</th><th>Status</th><th>L/P</th></tr></thead>
+    <tbody>${recent.map(b=>{const lp=calcLP(b);return `<tr>
+      <td>${SPORT_EMOJI[b.sport]||'🎲'} ${b.match}</td>
+      <td style="color:var(--accent);">${b.pick}</td>
+      <td class="mono">${(+b.odd).toFixed(2)}</td>
+      <td class="mono">${fmt(b.amount)}</td>
+      <td>${statusBadge(b)}</td>
+      <td class="mono ${lp>0?'c-green':lp<0?'c-red':'c-text'}">${b.status==='pendente'?'—':fmtSigned(lp)}</td>
+    </tr>`;}).join('')}</tbody>
+  </table>` : '<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Nenhuma aposta registrada</div><div>Vá em "Nova Aposta" para começar!</div></div>';
+
+  // Banca widget
+  const pct = +S.banca.inicial > 0 ? Math.min(100, Math.max(0, m.bancaAtual / (+S.banca.inicial * 1.5) * 100)) : 0;
+  $('banca-widget').innerHTML = `
+    <div style="font-size:28px;font-weight:700;font-family:var(--mono);color:${bancaColor(m.bancaAtual)};">${fmt(m.bancaAtual)}</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Inicial: ${fmt(S.banca.inicial)}</div>
+    <div class="progress-wrap"><div class="progress-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--green),var(--blue));"></div></div>
+    <div class="stat-row" style="margin-top:10px;">
+      <div class="stat-box"><div class="stat-box-label">Stake padrão</div><div class="stat-box-val c-blue">${S.banca.stake}%</div></div>
+      <div class="stat-box"><div class="stat-box-label">Valor sugerido</div><div class="stat-box-val">${fmt(m.bancaAtual * S.banca.stake / 100)}</div></div>
+      ${S.banca.limiteDia?`<div class="stat-box"><div class="stat-box-label">Lim. diário</div><div class="stat-box-val c-amber">${fmt(S.banca.limiteDia)}</div></div>`:''}
+    </div>`;
+
+  // Perf widget
+  $('perf-widget').innerHTML = `
+    <div class="stat-row">
+      <div class="stat-box"><div class="stat-box-label">Apostas ganhas</div><div class="stat-box-val c-green">${m.won}</div></div>
+      <div class="stat-box"><div class="stat-box-label">Apostas perdidas</div><div class="stat-box-val c-red">${m.lost}</div></div>
+      <div class="stat-box"><div class="stat-box-label">Cash Outs</div><div class="stat-box-val c-purple">${m.co}</div></div>
+      <div class="stat-box"><div class="stat-box-label">Pendentes</div><div class="stat-box-val c-amber">${m.pending}</div></div>
+    </div>`;
+
+  renderMainChart('banca');
+}
+
+function updateSidebarBanca() {
+  const m = calcMetrics();
+  $('sidebar-banca').textContent = fmt(m.bancaAtual);
+  $('sidebar-banca').style.color = bancaColor(m.bancaAtual);
+}
+
+// ===== CHARTS =====
+const CHART_COLORS = ['#4da6ff','#10d98f','#ffb830','#ff4d6d','#b06fff','#00e5cc'];
+
+function mkChart(id, type, data, options = {}) {
+  const ctx = $(id);
+  if (!ctx) return;
+  if (S.charts[id]) { try { S.charts[id].destroy(); } catch(e){} }
+  S.charts[id] = new Chart(ctx, { type, data, options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: type !== 'pie' && type !== 'doughnut' ? {
+      x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5a6278', font: { family: 'Space Grotesk', size: 11 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#5a6278', font: { family: 'Space Grotesk', size: 11 } } }
+    } : {},
+    ...options
+  }});
+}
+
+function renderMainChart(type) {
+  const sorted = [...S.bets].filter(b=>b.status!=='pendente'&&b.status!=='void').sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+  if (type === 'banca' || type === 'lucro') {
+    let running = +S.banca.inicial, labels = ['Início'], data = [running];
+    sorted.forEach(b => {
+      running += calcLP(b);
+      labels.push(b.date.slice(5));
+      data.push(parseFloat(running.toFixed(2)));
+    });
+    if (type === 'lucro') { data = data.map(v => parseFloat((v - +S.banca.inicial).toFixed(2))); }
+    const color = data[data.length-1] >= (type==='lucro'?0:+S.banca.inicial) ? '#10d98f' : '#ff4d6d';
+    mkChart('mainChart', 'line', { labels, datasets: [{ data, borderColor: color, backgroundColor: color+'18', tension: 0.4, fill: true, pointRadius: 2, pointBackgroundColor: color }] });
+  } else if (type === 'esporte') {
+    const map = {};
+    sorted.forEach(b => { if(!map[b.sport]) map[b.sport]=0; map[b.sport]+=calcLP(b); });
+    mkChart('mainChart', 'bar', {
+      labels: Object.keys(map).map(s=>SPORT_EMOJI[s]+' '+s),
+      datasets: [{ data: Object.values(map).map(v=>parseFloat(v.toFixed(2))), backgroundColor: CHART_COLORS.map(c=>c+'aa'), borderRadius: 6 }]
+    });
+  } else if (type === 'mercado') {
+    const map = {};
+    sorted.forEach(b => { const k = b.market.slice(0,20); if(!map[k]) map[k]=0; map[k]+=calcLP(b); });
+    const top = Object.entries(map).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,8);
+    mkChart('mainChart', 'bar', {
+      labels: top.map(x=>x[0]),
+      datasets: [{ data: top.map(x=>parseFloat(x[1].toFixed(2))), backgroundColor: CHART_COLORS.map(c=>c+'aa'), borderRadius: 6 }]
+    });
+  }
+}
+
+function switchChart(type, btn) {
+  document.querySelectorAll('#page-dashboard .tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active'); renderMainChart(type);
+}
+
+// ===== BANCA PAGE =====
+function saveBanca() {
+  S.banca.inicial = parseFloat($('cfg-banca').value) || S.banca.inicial;
+  S.banca.stake = parseFloat($('cfg-stake').value) || 5;
+  S.banca.limiteDia = parseFloat($('cfg-limite-dia').value) || 0;
+  S.banca.limiteMes = parseFloat($('cfg-limite-mes').value) || 0;
+  S.banca.stopWin = parseFloat($('cfg-stopwin').value) || 0;
+  S.banca.stopLoss = parseFloat($('cfg-stoploss').value) || 0;
+  updateSidebarBanca();
+  renderBancaPage();
+  toast('✅ Configurações salvas!');
+}
+
+function renderBancaPage() {
+  const m = calcMetrics();
+  // fill inputs
+  if($('cfg-banca')) $('cfg-banca').value = S.banca.inicial;
+  if($('cfg-stake')) $('cfg-stake').value = S.banca.stake;
+  if($('cfg-limite-dia')) $('cfg-limite-dia').value = S.banca.limiteDia || '';
+  if($('cfg-limite-mes')) $('cfg-limite-mes').value = S.banca.limiteMes || '';
+  if($('cfg-stopwin')) $('cfg-stopwin').value = S.banca.stopWin || '';
+  if($('cfg-stoploss')) $('cfg-stoploss').value = S.banca.stopLoss || '';
+
+  const pct = +S.banca.inicial > 0 ? Math.min(100, Math.max(0, m.bancaAtual / (+S.banca.inicial * 1.5) * 100)) : 0;
+  $('banca-resumo').innerHTML = `
+    <div style="font-size:26px;font-weight:700;font-family:var(--mono);color:${bancaColor(m.bancaAtual)};margin-bottom:4px;">${fmt(m.bancaAtual)}</div>
+    <div style="font-size:12px;color:var(--text2);">Banca inicial: ${fmt(S.banca.inicial)}</div>
+    <div class="progress-wrap"><div class="progress-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--green),var(--blue));"></div></div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="stat-box-label">Lucro total</div><div class="stat-box-val ${m.lucro>=0?'c-green':'c-red'}">${fmtSigned(m.lucro)}</div></div>
+      <div class="stat-box"><div class="stat-box-label">ROI</div><div class="stat-box-val ${m.roi>=0?'c-green':'c-red'}">${fmtPct(m.roi)}</div></div>
+      <div class="stat-box"><div class="stat-box-label">Winrate</div><div class="stat-box-val">${fmtPct(m.wr)}</div></div>
+      <div class="stat-box"><div class="stat-box-label">Stake sugerido</div><div class="stat-box-val c-blue">${fmt(m.bancaAtual * S.banca.stake / 100)}</div></div>
+    </div>`;
+
+  // Charts
+  const sorted = [...S.bets].filter(b=>b.status!=='pendente'&&b.status!=='void').sort((a,b)=>new Date(a.date)-new Date(b.date));
+  let running = +S.banca.inicial, labels = ['Início'], data = [running];
+  sorted.forEach(b => { running+=calcLP(b); labels.push(b.date.slice(5)); data.push(parseFloat(running.toFixed(2))); });
+  const col = data[data.length-1] >= +S.banca.inicial ? '#10d98f' : '#ff4d6d';
+  mkChart('bancaChart', 'line', { labels, datasets: [{ data, borderColor: col, backgroundColor: col+'18', tension: 0.4, fill: true, pointRadius: 2 }] });
+
+  const sportMap = {};
+  sorted.forEach(b => { if(!sportMap[b.sport])sportMap[b.sport]=0; sportMap[b.sport]+=calcLP(b); });
+  mkChart('sportChart', 'bar', {
+    labels: Object.keys(sportMap).map(s=>SPORT_EMOJI[s]+' '+s),
+    datasets: [{ data: Object.values(sportMap).map(v=>parseFloat(v.toFixed(2))), backgroundColor: CHART_COLORS.map(c=>c+'cc'), borderRadius: 8 }]
+  });
+}
+
+function calcKelly() {
+  const odd = parseFloat($('k-odd').value);
+  const prob = parseFloat($('k-prob').value) / 100;
+  const frac = parseFloat($('k-frac').value);
+  if (!odd || !prob || odd < 1.01 || prob <= 0 || prob >= 1) { $('k-result').value=''; $('kelly-info').textContent=''; return; }
+  const b = odd - 1;
+  const kelly = (b * prob - (1 - prob)) / b;
+  const kellFrac = kelly * frac;
+  const stake = Math.max(0, kellFrac) * calcMetrics().bancaAtual;
+  $('k-result').value = stake > 0 ? fmt(stake) : 'Sem valor (edge negativo)';
+  $('kelly-info').textContent = kelly <= 0 ? '⚠️ Edge negativo — esta aposta não tem valor esperado positivo.' :
+    `Kelly puro: ${(kelly*100).toFixed(2)}% da banca. Edge: ${((prob*odd - 1)*100).toFixed(2)}%.`;
+}
+
+// ===== RELATÓRIOS =====
+function renderRelatorios() {
+  const m = calcMetrics();
+  const fin = S.bets.filter(b => b.status !== 'pendente' && b.status !== 'void');
+
+  $('relat-metrics').innerHTML = [
+    { label:'Total investido', val: fmt(m.totalInvested), cls:'blue', icon:'💸' },
+    { label:'Lucro líquido', val: fmtSigned(m.lucro), cls: m.lucro>=0?'green':'red', icon:'📊' },
+    { label:'Odd média', val: m.avgOdd.toFixed(2), cls:'amber', icon:'🎰' },
+    { label:'Yield', val: fmtPct(m.roi), cls: m.roi>=0?'green':'red', icon:'📈' },
+  ].map(x=>`<div class="metric ${x.cls}"><div class="metric-icon">${x.icon}</div><div class="metric-label">${x.label}</div><div class="metric-value c-${x.cls}">${x.val}</div></div>`).join('');
+
+  // House chart
+  const houseMap = {};
+  fin.forEach(b=>{ if(!houseMap[b.house])houseMap[b.house]=0; houseMap[b.house]+=calcLP(b); });
+  mkChart('houseChart','bar',{
+    labels:Object.keys(houseMap),
+    datasets:[{data:Object.values(houseMap).map(v=>parseFloat(v.toFixed(2))),backgroundColor:CHART_COLORS.map(c=>c+'bb'),borderRadius:8}]
+  });
+
+  // Odd distribution
+  const ranges = {'1.01-1.5':0,'1.5-2.0':0,'2.0-3.0':0,'3.0-5.0':0,'5.0+':0};
+  fin.forEach(b => {
+    const o = +b.odd;
+    if(o<=1.5) ranges['1.01-1.5']++;
+    else if(o<=2) ranges['1.5-2.0']++;
+    else if(o<=3) ranges['2.0-3.0']++;
+    else if(o<=5) ranges['3.0-5.0']++;
+    else ranges['5.0+']++;
+  });
+  mkChart('oddChart','doughnut',{
+    labels:Object.keys(ranges), datasets:[{data:Object.values(ranges),backgroundColor:CHART_COLORS,borderWidth:0}]
+  },{plugins:{legend:{display:true,position:'right',labels:{color:'#9aa3b8',font:{family:'Space Grotesk',size:11}}}}});
+
+  // Month chart
+  const mthMap = {};
+  fin.forEach(b => { const k=b.date.slice(0,7); if(!mthMap[k])mthMap[k]=0; mthMap[k]+=calcLP(b); });
+  const mths = Object.keys(mthMap).sort();
+  mkChart('monthChart','bar',{
+    labels:mths,
+    datasets:[{data:mths.map(k=>parseFloat(mthMap[k].toFixed(2))),backgroundColor:mths.map(k=>mthMap[k]>=0?'#10d98f99':'#ff4d6d99'),borderRadius:6}]
+  });
+
+  // Top mercados
+  const mktMap = {};
+  fin.forEach(b=>{if(!mktMap[b.market])mktMap[b.market]={lp:0,n:0}; mktMap[b.market].lp+=calcLP(b); mktMap[b.market].n++;});
+  const top = Object.entries(mktMap).sort((a,b)=>Math.abs(b[1].lp)-Math.abs(a[1].lp)).slice(0,6);
+  $('top-mercados').innerHTML = top.map(([k,v])=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:12px;">${k.slice(0,28)}</span>
+      <span class="mono ${v.lp>=0?'c-green':'c-red'}" style="font-size:12px;">${fmtSigned(v.lp)}</span>
+    </div>`).join('') || '<div class="empty">Sem dados</div>';
+
+  // Sequências
+  const statusArr = [...S.bets].sort((a,b)=>new Date(a.date)-new Date(b.date)).filter(b=>b.status==='ganhou'||b.status==='perdeu').map(b=>b.status);
+  let maxW=0, maxL=0, curW=0, curL=0;
+  statusArr.forEach(s => {
+    if(s==='ganhou'){curW++;curL=0;maxW=Math.max(maxW,curW);}
+    else{curL++;curW=0;maxL=Math.max(maxL,curL);}
+  });
+  $('sequencias').innerHTML = `
+    <div class="stat-row">
+      <div class="stat-box"><div class="stat-box-label">Maior sequência de vitórias</div><div class="stat-box-val c-green">${maxW} ✅</div></div>
+      <div class="stat-box"><div class="stat-box-label">Maior sequência de derrotas</div><div class="stat-box-val c-red">${maxL} ❌</div></div>
+      <div class="stat-box"><div class="stat-box-label">Sequência atual</div><div class="stat-box-val ${curW>0?'c-green':'c-red'}">${curW>0?curW+'✅':curL+'❌'}</div></div>
+      <div class="stat-box"><div class="stat-box-label">Total finaliz.</div><div class="stat-box-val">${m.fin}</div></div>
+    </div>`;
+}
+
+// ===== EXCEL EXPORT =====
+function exportExcel() {
+  if (!S.bets.length) { toast('⚠️ Nenhuma aposta para exportar!'); return; }
+
+  const wb = XLSX.utils.book_new();
+  wb.Props = {
+    Title: 'BetTrack — Relatório de Gestão de Apostas',
+    Subject: 'Controle de banca, apostas e performance',
+    Author: 'BetTrack',
+    Company: 'BetTrack',
+    CreatedDate: new Date()
+  };
+
+  const theme = {
+    navy: '0B1220', slate: '1E293B', blue: '2563EB', cyan: '06B6D4',
+    green: '16A34A', red: 'DC2626', amber: 'D97706', purple: '7C3AED',
+    light: 'F8FAFC', soft: 'E2E8F0', text: '0F172A', muted: '64748B', white: 'FFFFFF'
+  };
+  const border = { top:{style:'thin',color:{rgb:'E2E8F0'}}, bottom:{style:'thin',color:{rgb:'E2E8F0'}}, left:{style:'thin',color:{rgb:'E2E8F0'}}, right:{style:'thin',color:{rgb:'E2E8F0'}} };
+  const moneyFmt = 'R$ #,##0.00;[Red]-R$ #,##0.00';
+  const pctFmt = '0.00%';
+  const dateFmt = 'dd/mm/yyyy';
+
+  function styleRange(ws, range, style) {
+    const r = XLSX.utils.decode_range(range);
+    for (let R = r.s.r; R <= r.e.r; R++) {
+      for (let C = r.s.c; C <= r.e.c; C++) {
+        const addr = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+        ws[addr].s = { ...(ws[addr].s || {}), ...style };
+      }
+    }
+  }
+  function setStyle(ws, addr, style) {
+    if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+    ws[addr].s = { ...(ws[addr].s || {}), ...style };
+  }
+  function safeSheetName(name) { return String(name).replace(/[\/?*\[\]:]/g, '').slice(0, 31) || 'Sheet'; }
+
+  const m = calcMetrics();
+  const fin = S.bets.filter(b => b.status !== 'pendente' && b.status !== 'void');
+  const exportDate = new Date().toLocaleString('pt-BR');
+
+  // ===== DASHBOARD / RESUMO EXECUTIVO =====
+  const resumo = [
+    ['BetTrack — Relatório Executivo', '', '', '', '', ''],
+    ['Gerado em', exportDate, '', 'Banca inicial', +S.banca.inicial, ''],
+    ['', '', '', '', '', ''],
+    ['Indicador', 'Valor', 'Leitura', '', 'Gestão de Risco', 'Valor'],
+    ['Banca atual', +m.bancaAtual.toFixed(2), m.bancaAtual >= +S.banca.inicial ? 'Acima da banca inicial' : 'Abaixo da banca inicial', '', 'Stake padrão', (S.banca.stake || 0) / 100],
+    ['Lucro / Prejuízo', +m.lucro.toFixed(2), m.lucro >= 0 ? 'Resultado positivo' : 'Resultado negativo', '', 'Stake sugerida', +(m.bancaAtual * S.banca.stake / 100).toFixed(2)],
+    ['ROI / Yield', +(m.roi / 100).toFixed(4), m.roi >= 0 ? 'Rentável' : 'Revisar estratégia', '', 'Limite diário', S.banca.limiteDia || 'Não definido'],
+    ['Winrate', +(m.wr / 100).toFixed(4), `${m.won} ganhas | ${m.lost} perdidas | ${m.co} cash outs`, '', 'Stop Win', S.banca.stopWin || 'Não definido'],
+    ['Total apostado', +m.totalInvested.toFixed(2), `${m.fin} apostas finalizadas`, '', 'Stop Loss', S.banca.stopLoss || 'Não definido'],
+    ['Odd média', +m.avgOdd.toFixed(2), 'Média das apostas finalizadas', '', 'Pendentes', m.pending],
+    ['', '', '', '', '', ''],
+    ['Resumo por Status', '', '', '', '', ''],
+    ['Status', 'Quantidade', 'Participação', 'Lucro/Prejuízo', 'Ticket Médio', ''],
+  ];
+  const statusOrder = ['ganhou','perdeu','cashout','pendente','void'];
+  statusOrder.forEach(st => {
+    const arr = S.bets.filter(b => b.status === st);
+    const lp = arr.reduce((sum,b)=>sum+calcLP(b),0);
+    const invested = arr.reduce((sum,b)=>sum+(+b.amount||0),0);
+    resumo.push([st.toUpperCase(), arr.length, S.bets.length ? arr.length / S.bets.length : 0, +lp.toFixed(2), arr.length ? +(invested/arr.length).toFixed(2) : 0, '']);
+  });
+
+  const wsResumo = XLSX.utils.aoa_to_sheet(resumo);
+  wsResumo['!cols'] = [{wch:24},{wch:18},{wch:34},{wch:4},{wch:22},{wch:18}];
+  wsResumo['!merges'] = [{s:{r:0,c:0},e:{r:0,c:5}}, {s:{r:11,c:0},e:{r:11,c:5}}];
+  styleRange(wsResumo, 'A1:F1', { font:{bold:true,color:{rgb:theme.white},sz:18}, fill:{fgColor:{rgb:theme.navy}}, alignment:{horizontal:'center',vertical:'center'} });
+  styleRange(wsResumo, 'A4:C4', { font:{bold:true,color:{rgb:theme.white}}, fill:{fgColor:{rgb:theme.blue}}, border, alignment:{horizontal:'center'} });
+  styleRange(wsResumo, 'E4:F4', { font:{bold:true,color:{rgb:theme.white}}, fill:{fgColor:{rgb:theme.slate}}, border, alignment:{horizontal:'center'} });
+  styleRange(wsResumo, 'A12:F12', { font:{bold:true,color:{rgb:theme.white},sz:14}, fill:{fgColor:{rgb:theme.slate}}, alignment:{horizontal:'center'} });
+  styleRange(wsResumo, 'A13:F13', { font:{bold:true,color:{rgb:theme.white}}, fill:{fgColor:{rgb:theme.blue}}, border, alignment:{horizontal:'center'} });
+  styleRange(wsResumo, 'A2:F18', { border, alignment:{vertical:'center'} });
+  ['B5','B6','B9','F6'].forEach(a => { if(wsResumo[a]) wsResumo[a].z = moneyFmt; });
+  ['B7','B8','F5','C14','C15','C16','C17','C18'].forEach(a => { if(wsResumo[a]) wsResumo[a].z = pctFmt; });
+  ['D14','D15','D16','D17','D18','E14','E15','E16','E17','E18'].forEach(a => { if(wsResumo[a]) wsResumo[a].z = moneyFmt; });
+  XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo Executivo');
+
+  // ===== APOSTAS DETALHADAS =====
+  const headers = ['ID','Data','Hora','Esporte','Tipo','Partida / Evento','Mercado','Palpite','Odd','Valor Apostado','Casa','Liga','Tipster / Fonte','Status','Cash Out','Retorno','Lucro / Prejuízo','ROI','Observações'];
+  const rows = S.bets.map(b => {
+    const lp = calcLP(b);
+    const ret = b.status==='ganhou' ? +b.amount*+b.odd : b.status==='cashout' ? +(b.cashoutVal||0) : b.status==='perdeu' ? 0 : '';
+    const roi = +b.amount > 0 && b.status !== 'pendente' ? lp / +b.amount : '';
+    return [b.id, b.date, b.time||'', b.sport, b.tipo||'', b.match, b.market, b.pick, +b.odd, +b.amount, b.house||'', b.liga||'', b.tipster||'', b.status, b.status==='cashout'?+(b.cashoutVal||0):'', ret, b.status!=='pendente'?+lp.toFixed(2):'', roi, b.obs||''];
+  });
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws['!cols'] = [10,12,8,13,12,30,24,24,8,15,15,20,18,13,13,13,16,10,36].map(w=>({wch:w}));
+  ws['!autofilter'] = { ref: ws['!ref'] };
+  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+  styleRange(ws, `A1:S1`, { font:{bold:true,color:{rgb:theme.white}}, fill:{fgColor:{rgb:theme.navy}}, border, alignment:{horizontal:'center',vertical:'center'} });
+  styleRange(ws, `A2:S${rows.length+1}`, { border, alignment:{vertical:'center',wrapText:true} });
+  for (let r = 2; r <= rows.length + 1; r++) {
+    ['J','O','P','Q'].forEach(col => { if(ws[col+r]) ws[col+r].z = moneyFmt; });
+    if (ws['B'+r]) ws['B'+r].z = dateFmt;
+    if (ws['I'+r]) ws['I'+r].z = '0.00';
+    if (ws['R'+r]) ws['R'+r].z = pctFmt;
+    const st = ws['N'+r]?.v;
+    const statusColor = st === 'ganhou' ? theme.green : st === 'perdeu' ? theme.red : st === 'cashout' ? theme.purple : st === 'pendente' ? theme.amber : theme.muted;
+    setStyle(ws, 'N'+r, { font:{bold:true,color:{rgb:theme.white}}, fill:{fgColor:{rgb:statusColor}}, alignment:{horizontal:'center'} });
+    if (ws['Q'+r]?.v > 0) setStyle(ws, 'Q'+r, { font:{bold:true,color:{rgb:theme.green}}, border });
+    if (ws['Q'+r]?.v < 0) setStyle(ws, 'Q'+r, { font:{bold:true,color:{rgb:theme.red}}, border });
+  }
+  XLSX.utils.book_append_sheet(wb, ws, 'Apostas Detalhadas');
+
+  // Helper for grouped analytical sheets
+  function buildStatsSheet(title, mapFn, sheetName) {
+    const stats = {};
+    fin.forEach(b => {
+      const k = mapFn(b) || 'Não informado';
+      if (!stats[k]) stats[k] = { apostas:0, ganhas:0, perdidas:0, cashout:0, investido:0, lucro:0, odds:0 };
+      stats[k].apostas++;
+      if (b.status === 'ganhou') stats[k].ganhas++;
+      if (b.status === 'perdeu') stats[k].perdidas++;
+      if (b.status === 'cashout') stats[k].cashout++;
+      stats[k].investido += +b.amount || 0;
+      stats[k].lucro += calcLP(b);
+      stats[k].odds += +b.odd || 0;
+    });
+    const data = [[title, '', '', '', '', '', '', ''], ['Categoria','Apostas','Ganhas','Perdidas','Cash Outs','Winrate','Investido','Lucro / Prejuízo','ROI','Odd Média']];
+    Object.entries(stats).sort((a,b)=>Math.abs(b[1].lucro)-Math.abs(a[1].lucro)).forEach(([k,v]) => {
+      data.push([k, v.apostas, v.ganhas, v.perdidas, v.cashout, v.apostas ? v.ganhas/v.apostas : 0, +v.investido.toFixed(2), +v.lucro.toFixed(2), v.investido ? v.lucro/v.investido : 0, v.apostas ? +(v.odds/v.apostas).toFixed(2) : 0]);
+    });
+    const w = XLSX.utils.aoa_to_sheet(data);
+    w['!cols'] = [{wch:26},{wch:10},{wch:10},{wch:10},{wch:10},{wch:12},{wch:16},{wch:18},{wch:10},{wch:10}];
+    w['!merges'] = [{s:{r:0,c:0},e:{r:0,c:9}}];
+    w['!autofilter'] = { ref: `A2:J${data.length}` };
+    styleRange(w, 'A1:J1', { font:{bold:true,color:{rgb:theme.white},sz:15}, fill:{fgColor:{rgb:theme.navy}}, alignment:{horizontal:'center'} });
+    styleRange(w, 'A2:J2', { font:{bold:true,color:{rgb:theme.white}}, fill:{fgColor:{rgb:theme.blue}}, border, alignment:{horizontal:'center'} });
+    if (data.length > 2) styleRange(w, `A3:J${data.length}`, { border, alignment:{vertical:'center'} });
+    for (let r=3; r<=data.length; r++) {
+      ['G','H'].forEach(c => { if(w[c+r]) w[c+r].z = moneyFmt; });
+      ['F','I'].forEach(c => { if(w[c+r]) w[c+r].z = pctFmt; });
+      if (w['H'+r]?.v > 0) setStyle(w, 'H'+r, { font:{bold:true,color:{rgb:theme.green}}, border });
+      if (w['H'+r]?.v < 0) setStyle(w, 'H'+r, { font:{bold:true,color:{rgb:theme.red}}, border });
+    }
+    XLSX.utils.book_append_sheet(wb, w, safeSheetName(sheetName));
+  }
+
+  buildStatsSheet('Performance por Esporte', b => b.sport, 'Por Esporte');
+  buildStatsSheet('Performance por Casa de Apostas', b => b.house, 'Por Casa');
+  buildStatsSheet('Performance por Mercado', b => b.market, 'Por Mercado');
+
+  // ===== RESULTADO MENSAL =====
+  const monthStats = {};
+  fin.forEach(b => {
+    const k = b.date ? b.date.slice(0,7) : 'Sem data';
+    if (!monthStats[k]) monthStats[k] = { apostas:0, investido:0, lucro:0, ganhas:0 };
+    monthStats[k].apostas++;
+    monthStats[k].investido += +b.amount || 0;
+    monthStats[k].lucro += calcLP(b);
+    if (b.status === 'ganhou') monthStats[k].ganhas++;
+  });
+  const monthData = [['Resultado Mensal', '', '', '', '', ''], ['Mês','Apostas','Investido','Lucro / Prejuízo','ROI','Winrate']];
+  Object.keys(monthStats).sort().forEach(k => {
+    const v = monthStats[k];
+    monthData.push([k, v.apostas, +v.investido.toFixed(2), +v.lucro.toFixed(2), v.investido ? v.lucro/v.investido : 0, v.apostas ? v.ganhas/v.apostas : 0]);
+  });
+  const wm = XLSX.utils.aoa_to_sheet(monthData);
+  wm['!cols'] = [{wch:14},{wch:10},{wch:16},{wch:18},{wch:10},{wch:10}];
+  wm['!merges'] = [{s:{r:0,c:0},e:{r:0,c:5}}];
+  wm['!autofilter'] = { ref: `A2:F${monthData.length}` };
+  styleRange(wm, 'A1:F1', { font:{bold:true,color:{rgb:theme.white},sz:15}, fill:{fgColor:{rgb:theme.navy}}, alignment:{horizontal:'center'} });
+  styleRange(wm, 'A2:F2', { font:{bold:true,color:{rgb:theme.white}}, fill:{fgColor:{rgb:theme.blue}}, border, alignment:{horizontal:'center'} });
+  if (monthData.length > 2) styleRange(wm, `A3:F${monthData.length}`, { border });
+  for (let r=3; r<=monthData.length; r++) {
+    ['C','D'].forEach(c => { if(wm[c+r]) wm[c+r].z = moneyFmt; });
+    ['E','F'].forEach(c => { if(wm[c+r]) wm[c+r].z = pctFmt; });
+    if (wm['D'+r]?.v > 0) setStyle(wm, 'D'+r, { font:{bold:true,color:{rgb:theme.green}}, border });
+    if (wm['D'+r]?.v < 0) setStyle(wm, 'D'+r, { font:{bold:true,color:{rgb:theme.red}}, border });
+  }
+  XLSX.utils.book_append_sheet(wb, wm, 'Resultado Mensal');
+
+  // ===== CONFIGURAÇÕES E NOTAS =====
+  const notas = XLSX.utils.aoa_to_sheet([
+    ['Notas do Relatório', ''],
+    ['Formato', 'Arquivo Excel com abas executivas, detalhamento e análises por dimensão.'],
+    ['Importante', 'ROI/Yield é calculado como Lucro dividido pelo Total Investido nas apostas finalizadas.'],
+    ['Status pendente', 'Não entra no lucro/prejuízo até ser atualizado.'],
+    ['Void/Anulada', 'Não entra nas métricas finalizadas.'],
+    ['Gerado por', 'BetTrack — Gestão de Apostas']
+  ]);
+  notas['!cols'] = [{wch:22},{wch:90}];
+  styleRange(notas, 'A1:B1', { font:{bold:true,color:{rgb:theme.white},sz:15}, fill:{fgColor:{rgb:theme.navy}}, alignment:{horizontal:'center'} });
+  styleRange(notas, 'A2:B6', { border, alignment:{wrapText:true,vertical:'top'} });
+  XLSX.utils.book_append_sheet(wb, notas, 'Notas');
+
+  const now = new Date();
+  const fname = `BetTrack_Relatorio_Profissional_${now.toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, fname);
+  toast('📥 Excel profissional exportado com sucesso!');
+}
+
+// ===== TOAST =====
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ===== INIT =====
+setToday();
+</script>
+</body>
+</html>
